@@ -1,4 +1,16 @@
 # Fractal Sound Explorer
+### Continuous Wave Mod by rwvens
+
+This slight modification of the original code changes the audio generation code to generate a sine wave with frequency set to the imaginary component of the iteration variable and magnitude set to the distance from the mean. This enables coherent and interesting audio in a wider set of of situations.
+
+The idea is based on the fact that multiplication of complex numbers causes the vectors to rotate, creating a natural analogy for generating audio. Since the rotation is based on the value of the imaginary component, it makes sense to use *i* to control the pitch of the output wave.
+
+Demo Video:
+
+https://youtu.be/fRS4zQu95O0
+
+### Original
+
 Explore fractals in an audio-visual sandbox
 
 Download executable on my itch.io page:

@@ -31,7 +31,7 @@ static double cam_x_dest = cam_x;
 static double cam_y_dest = cam_y;
 static double cam_zoom_dest = cam_zoom;
 static bool sustain = true;
-static bool normalized = true;
+static bool normalized = false;
 static bool use_color = false;
 static bool hide_orbit = true;
 static double jx = 1e8;
@@ -60,6 +60,11 @@ void PtToScreen(double px, double py, int& x, int& y) {
 
 //All fractal equations
 void mandelbrot(double& x, double& y, double cx, double cy) {
+  //std::complex<double> z(x, y);
+  //std::complex<double> c(cx, cy);
+  //z = z * z + c;
+  //x = z.real();
+  //y = z.imag();
   double nx = x*x - y*y + cx;
   double ny = 2.0*x*y + cy;
   x = nx;
@@ -135,6 +140,8 @@ public:
   double play_cx, play_cy;
   double play_nx, play_ny;
   double play_px, play_py;
+  double phase;
+  double mag, pmag;
 
   Synth(HWND hwnd) : WinAudio(hwnd, sample_rate) {
     audio_reset = true;
@@ -148,6 +155,9 @@ public:
     play_ny = 0.0;
     play_px = 0.0;
     play_py = 0.0;
+    phase = 0.0;
+    mag = 0.0;
+    pmag = 0.0;
   }
 
   void SetPoint(double x, double y) {
@@ -174,6 +184,9 @@ public:
       play_py = play_ny;
       mean_x = play_nx;
       mean_y = play_ny;
+      phase = 0.0;
+      mag = 0.0;
+      pmag = 0.0;
       volume = 8000.0;
       audio_reset = false;
     }
@@ -215,6 +228,8 @@ public:
           dy = play_y - mean_y;
           dpx = play_px - mean_x;
           dpy = play_py - mean_y;
+          pmag = std::sqrt(1e-12 + dpx * dpx + dpy * dpy);
+          mag = std::sqrt(1e-12 + dx * dx + dy * dy);
         }
 
         //Update mean
@@ -241,13 +256,18 @@ public:
 
       //Cosine interpolation
       double t = double(j) / double(steps);
-      t = 0.5 - 0.5*std::cos(t * 3.14159);
-      double wx = t*dx + (1.0 - t)*dpx;
-      double wy = t*dy + (1.0 - t)*dpy;
+      t = 0.5 - 0.5 * std::cos(t * 3.14159);
+      //double wx = t*dx + (1.0 - t)*dpx;
+      double wy = t * play_y + (1.0 - t) * play_py;
+      double wmag = t * mag + (1.0 - t) * pmag;
+
+      double f = wy / 3.14159 / steps;
+      phase = phase + f;
+      double s = std::sin(phase) * wmag;
 
       //Save the audio to the 2 channels
-      m_samples[i]   = (int16_t)std::min(std::max(wx * volume, -32000.0), 32000.0);
-      m_samples[i+1] = (int16_t)std::min(std::max(wy * volume, -32000.0), 32000.0);
+      m_samples[i]   = (int16_t)std::min(std::max(s * volume, -32000.0), 32000.0);
+      m_samples[i+1] = (int16_t)std::min(std::max(s * volume, -32000.0), 32000.0);
       m_audio_time += 1;
     }
 
@@ -270,7 +290,7 @@ void SetFractal(sf::Shader& shader, int type, Synth& synth) {
   shader.setUniform("iType", type);
   jx = jy = 1e8;
   fractal = all_fractals[type];
-  normalized = (type == 0);
+  normalized = false;// (type == 0);
   synth.audio_pause = true;
   hide_orbit = true;
   frame = 0;

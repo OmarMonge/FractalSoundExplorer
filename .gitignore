@@ -1,3 +1,6 @@
+/.idea
+.vs/
+x64/
 *.bin
 *.idb
 *.log
