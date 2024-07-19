@@ -1,0 +1,11 @@
+E:\Github\FractalSoundExplorer\Debug\MandelbrotMusic.vcxproj.CopyComplete
+E:\Github\FractalSoundExplorer\Debug\MandelbrotSound.exe
+E:\Github\FractalSoundExplorer\Debug\sfml-graphics-d-2.dll
+E:\Github\FractalSoundExplorer\Debug\sfml-window-d-2.dll
+E:\Github\FractalSoundExplorer\Debug\sfml-system-d-2.dll
+E:\Github\FractalSoundExplorer\Debug\freetyped.dll
+E:\Github\FractalSoundExplorer\Debug\zlibd1.dll
+E:\Github\FractalSoundExplorer\Debug\bz2d.dll
+E:\Github\FractalSoundExplorer\Debug\libpng16d.dll
+E:\Github\FractalSoundExplorer\Debug\brotlidec.dll
+E:\Github\FractalSoundExplorer\Debug\brotlicommon.dll
