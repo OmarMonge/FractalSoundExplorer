@@ -87,6 +87,21 @@ void sfx(double& x, double& y, double cx, double cy) {
   x = z.real();
   y = z.imag();
 }
+void sfxx(double& x, double& y, double cx, double cy) {
+  std::complex<double> z(x, y);
+  std::complex<double> c2(cx*cx, cy*cy);
+  z = z/(x*x + y*y) - (z * c2);
+  x = z.real();
+  y = z.imag();
+}
+void myOwn(double& x, double& y, double cx, double cy) {
+  std::complex<double> z(x, y);
+  std::complex<double> c2(cx*cx, cy*cy);
+  z = z/(x*x + y*y) - (z * c2) - cx * y;
+  x = z.real();
+  y = z.imag();
+}
+
 void henon(double& x, double& y, double cx, double cy) {
   double nx = 1.0 - cx*x*x + y;
   double ny = cy*x;
@@ -113,6 +128,40 @@ void chirikov(double& x, double& y, double cx, double cy) {
   x += cx*y;
 }
 
+void sierpinski(double& x, double& y, double cx, double cy) {
+    int r = rand() % 3;
+    switch (r) {
+    case 0:
+        x = x * 0.5;
+        y = y * 0.5;
+        break;
+    case 1:
+        x = x * 0.5 + 0.5;
+        y = y * 0.5;
+        break;
+    case 2:
+        x = x * 0.5 + 0.25;
+        y = y * 0.5 + 0.5;
+        break;
+    }
+}
+
+void dragon(double& x, double& y, double cx, double cy) {
+    double nx, ny;
+    if (rand() % 2 == 0) {
+        nx = (x * std::cos(M_PI / 4) - y * std::sin(M_PI / 4)) / std::sqrt(2);
+        ny = (x * std::sin(M_PI / 4) + y * std::cos(M_PI / 4)) / std::sqrt(2);
+    }
+    else {
+        nx = (x * std::cos(M_PI / 4) + y * std::sin(M_PI / 4)) / std::sqrt(2) + 1;
+        ny = (-x * std::sin(M_PI / 4) + y * std::cos(M_PI / 4)) / std::sqrt(2);
+    }
+    x = nx;
+    y = ny;
+}
+
+
+
 //List of fractal equations
 static const Fractal all_fractals[] = {
   mandelbrot,
@@ -123,7 +172,13 @@ static const Fractal all_fractals[] = {
   duffing,
   ikeda,
   chirikov,
+  sfxx,
+  myOwn,
+  sierpinski,
+
+  dragon,  // Add Dragon Curve here
 };
+
 
 //Synthesizer class to inherit Windows Audio.
 class Synth : public WinAudio {
@@ -267,14 +322,15 @@ public:
 
 //Change the fractal
 void SetFractal(sf::Shader& shader, int type, Synth& synth) {
-  shader.setUniform("iType", type);
-  jx = jy = 1e8;
-  fractal = all_fractals[type];
-  normalized = (type == 0);
-  synth.audio_pause = true;
-  hide_orbit = true;
-  frame = 0;
+    shader.setUniform("iType", type);
+    jx = jy = 1e8;
+    fractal = all_fractals[type];
+    normalized = (type == 0);
+    synth.audio_pause = true;
+    hide_orbit = true;
+    frame = 0;
 }
+
 
 //Used whenever the window is created or resized
 void resize_window(sf::RenderWindow& window, sf::RenderTexture& rt, const sf::ContextSettings& settings, int w, int h) {
@@ -375,99 +431,122 @@ int main(int argc, char *argv[]) {
   bool showHelpMenu = false;
   sf::Vector2i prevDrag;
   while (window.isOpen()) {
-    sf::Event event;
-    while (window.pollEvent(event)) {
-      if (event.type == sf::Event::Closed) {
-        window.close();
-        break;
-      } else if (event.type == sf::Event::Resized) {
-        resize_window(window, renderTexture, settings, event.size.width, event.size.height);
-      } else if (event.type == sf::Event::KeyPressed) {
-        const sf::Keyboard::Key keycode = event.key.code;
-        if (keycode == sf::Keyboard::Escape) {
-          window.close();
-          break;
-        } else if (keycode >= sf::Keyboard::Num1 && keycode <= sf::Keyboard::Num8) {
-          SetFractal(shader, keycode - sf::Keyboard::Num1, synth);
-        } else if (keycode == sf::Keyboard::F11) {
-          toggle_fullscreen = true;
-        } else if (keycode == sf::Keyboard::D) {
-          sustain = !sustain;
-        } else if (keycode == sf::Keyboard::C) {
-          use_color = !use_color;
-          frame = 0;
-        } else if (keycode == sf::Keyboard::R) {
-          cam_x = cam_x_dest = 0.0;
-          cam_y = cam_y_dest = 0.0;
-          cam_zoom = cam_zoom_dest = 100.0;
-          frame = 0;
-        } else if (keycode == sf::Keyboard::J) {
-          if (jx < 1e8) {
-            jx = jy = 1e8;
-          } else {
-            juliaDrag = true;
-            const sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-            ScreenToPt(mousePos.x, mousePos.y, jx, jy);
+      sf::Event event;
+      while (window.pollEvent(event)) {
+          if (event.type == sf::Event::Closed) {
+              window.close();
+              break;
           }
-          synth.audio_pause = true;
-          hide_orbit = true;
-          frame = 0;
-        } else if (keycode == sf::Keyboard::S) {
-          takeScreenshot = true;
-        } else if (keycode == sf::Keyboard::H) {
-          showHelpMenu = !showHelpMenu;
-        }
-      } else if (event.type == sf::Event::KeyReleased) {
-        if (event.key.code == sf::Keyboard::J) {
-          juliaDrag = false;
-          frame = 0;
-        }
-      } else if (event.type == sf::Event::MouseWheelMoved) {
-        cam_zoom_dest *= std::pow(1.1f, event.mouseWheel.delta);
-        const sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
-        cam_x_fp = mouse_pos.x;
-        cam_y_fp = mouse_pos.y;
-      } else if (event.type == sf::Event::MouseButtonPressed) {
-        if (event.mouseButton.button == sf::Mouse::Left) {
-          leftPressed = true;
-          hide_orbit = false;
-          ScreenToPt(event.mouseButton.x, event.mouseButton.y, px, py);
-          synth.SetPoint(px, py);
-          orbit_x = px;
-          orbit_y = py;
-        } else if (event.mouseButton.button == sf::Mouse::Middle) {
-          prevDrag = sf::Vector2i(event.mouseButton.x, event.mouseButton.y);
-          dragging = true;
-        } else if (event.mouseButton.button == sf::Mouse::Right) {
-          synth.audio_pause = true;
-          hide_orbit = true;
-        }
-      } else if (event.type == sf::Event::MouseButtonReleased) {
-        if (event.mouseButton.button == sf::Mouse::Left) {
-          leftPressed = false;
-        } else if (event.mouseButton.button == sf::Mouse::Middle) {
-          dragging = false;
-        }
-      } else if (event.type == sf::Event::MouseMoved) {
-        if (leftPressed) {
-          ScreenToPt(event.mouseMove.x, event.mouseMove.y, px, py);
-          synth.SetPoint(px, py);
-          orbit_x = px;
-          orbit_y = py;
-        }
-        if (dragging) {
-          sf::Vector2i curDrag = sf::Vector2i(event.mouseMove.x, event.mouseMove.y);
-          cam_x_dest += (curDrag.x - prevDrag.x) / cam_zoom;
-          cam_y_dest += (curDrag.y - prevDrag.y) / cam_zoom;
-          prevDrag = curDrag;
-          frame = 0;
-        }
-        if (juliaDrag) {
-          ScreenToPt(event.mouseMove.x, event.mouseMove.y, jx, jy);
-          frame = 0;
-        }
+          else if (event.type == sf::Event::Resized) {
+              resize_window(window, renderTexture, settings, event.size.width, event.size.height);
+          }
+          else if (event.type == sf::Event::KeyPressed) {
+              const sf::Keyboard::Key keycode = event.key.code;
+              if (keycode == sf::Keyboard::Escape) {
+                  window.close();
+                  break;
+              }
+              else if (keycode >= sf::Keyboard::Num1 && keycode <= sf::Keyboard::Num9) {  // Updated range
+                  SetFractal(shader, keycode - sf::Keyboard::Num1, synth);
+              }
+              else if (keycode == sf::Keyboard::F11) {
+                  toggle_fullscreen = true;
+              }
+              else if (keycode == sf::Keyboard::D) {
+                  sustain = !sustain;
+              }
+              else if (keycode == sf::Keyboard::C) {
+                  use_color = !use_color;
+                  frame = 0;
+              }
+              else if (keycode == sf::Keyboard::R) {
+                  cam_x = cam_x_dest = 0.0;
+                  cam_y = cam_y_dest = 0.0;
+                  cam_zoom = cam_zoom_dest = 100.0;
+                  frame = 0;
+              }
+              else if (keycode == sf::Keyboard::J) {
+                  if (jx < 1e8) {
+                      jx = jy = 1e8;
+                  }
+                  else {
+                      juliaDrag = true;
+                      const sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                      ScreenToPt(mousePos.x, mousePos.y, jx, jy);
+                  }
+                  synth.audio_pause = true;
+                  hide_orbit = true;
+                  frame = 0;
+              }
+              else if (keycode == sf::Keyboard::S) {
+                  takeScreenshot = true;
+              }
+              else if (keycode == sf::Keyboard::H) {
+                  showHelpMenu = !showHelpMenu;
+              }
+          }
+          else if (event.type == sf::Event::KeyReleased) {
+              if (event.key.code == sf::Keyboard::J) {
+                  juliaDrag = false;
+                  frame = 0;
+              }
+          }
+          else if (event.type == sf::Event::MouseWheelMoved) {
+              cam_zoom_dest *= std::pow(1.1f, event.mouseWheel.delta);
+              const sf::Vector2i mouse_pos = sf::Mouse::getPosition(window);
+              cam_x_fp = mouse_pos.x;
+              cam_y_fp = mouse_pos.y;
+          }
+          else if (event.type == sf::Event::MouseButtonPressed) {
+              if (event.mouseButton.button == sf::Mouse::Left) {
+                  leftPressed = true;
+                  hide_orbit = false;
+                  ScreenToPt(event.mouseButton.x, event.mouseButton.y, px, py);
+                  synth.SetPoint(px, py);
+                  orbit_x = px;
+                  orbit_y = py;
+              }
+              else if (event.mouseButton.button == sf::Mouse::Middle) {
+                  prevDrag = sf::Vector2i(event.mouseButton.x, event.mouseButton.y);
+                  dragging = true;
+              }
+              else if (event.mouseButton.button == sf::Mouse::Right) {
+                  synth.audio_pause = true;
+                  hide_orbit = true;
+              }
+          }
+          else if (event.type == sf::Event::MouseButtonReleased) {
+              if (event.mouseButton.button == sf::Mouse::Left) {
+                  leftPressed = false;
+              }
+              else if (event.mouseButton.button == sf::Mouse::Middle) {
+                  dragging = false;
+              }
+          }
+          else if (event.type == sf::Event::MouseMoved) {
+              if (leftPressed) {
+                  ScreenToPt(event.mouseMove.x, event.mouseMove.y, px, py);
+                  synth.SetPoint(px, py);
+                  orbit_x = px;
+                  orbit_y = py;
+              }
+              if (dragging) {
+                  sf::Vector2i curDrag = sf::Vector2i(event.mouseMove.x, event.mouseMove.y);
+                  cam_x_dest += (curDrag.x - prevDrag.x) / cam_zoom;
+                  cam_y_dest += (curDrag.y - prevDrag.y) / cam_zoom;
+                  prevDrag = curDrag;
+                  frame = 0;
+              }
+              if (juliaDrag) {
+                  ScreenToPt(event.mouseMove.x, event.mouseMove.y, jx, jy);
+                  frame = 0;
+              }
+          }
       }
-    }
+
+      // Rest of your main loop
+      
+
 
     //Apply zoom
     double fpx, fpy, delta_cam_x, delta_cam_y;

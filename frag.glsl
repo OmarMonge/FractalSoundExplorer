@@ -66,6 +66,14 @@ VEC2 feather(VEC2 z, VEC2 c) {
 VEC2 sfx(VEC2 z, VEC2 c) {
   return z * dot(z,z) - cx_mul(z, c*c);
 }
+VEC2 sfxxx(VEC2 z, VEC2 c) {
+
+  return z/(dot(z,z)) - cx_mul(z, c*c);
+}
+VEC2 myOwn(VEC2 z, VEC2 c) {
+
+  return z/(dot(z,z)) - cx_mul(z, c*c) - c.x*z.y ;
+}
 VEC2 henon(VEC2 z, VEC2 c) {
   return VEC2(1.0 - c.x*z.x*z.x + z.y, c.y * z.x);
 }
@@ -83,6 +91,8 @@ VEC2 chirikov(VEC2 z, VEC2 c) {
   z.x += c.x*z.y;
   return z;
 }
+
+
 
 #if 1
 #define DO_LOOP(name) \
@@ -116,6 +126,9 @@ vec3 fractal(VEC2 z, VEC2 c) {
     case 5: DO_LOOP(duffing); break;
     case 6: DO_LOOP(ikeda); break;
     case 7: DO_LOOP(chirikov); break;
+    //case 8: DO_LOOP(sfxxx); break;
+    case 8: DO_LOOP(myOwn); break;
+   // case 9: DO_LOOP(sierpinski); break; // Sierpinski Triangle
   }
 
   if (i != iIters) {
